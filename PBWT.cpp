@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
 	char s[2 * M + 5000]; // assumes fixed fields take up less than 5000 characters
 	vector<int> idx(M); // idx[i] = index of sample i in the reverse positional prefix array
 	vector<int> backwardPre(M), block(M), blockSize(M + 1); // block[i] = block ID of sample i in the reverse PBWT
-	int fp = -1, bp = 0; // pointers for genetic distance
+	int fp = -1, bp = 0; // pointers for gemomic distance
 
 	for (int site = 0; site + 1 < N; ++site) {
 		in.getline(s, 2 * M + 5000);
@@ -70,9 +70,9 @@ int main(int argc, char* argv[]) {
 			int rsite = (N - 1) - site - 1; // index of the corresponding reverse site
 			backward.seekg((long long)rsite * M * 8);
 
-			// update genetic pointers
-			while (positions[site - 1] - (fp != -1 ? positions[fp] : 0) >= L) ++fp;
-			while ((bp < N ? positions[bp] : numeric_limits<int>::max()) - positions[site + 1] < L) ++bp; 
+			// update genomic pointers
+			while (positions[site - 1] - (fp != -1 ? positions[fp] : 0) >= L) ++fp; // points to first position < L
+			while ((bp < N ? positions[bp] : numeric_limits<int>::max()) - positions[site + 1] < L) ++bp; // points to the first position >= L
 			int rsite_bp = (N - 1) - bp;
 
 			// initialize backward sparse table, idx, backwardPre, and block
@@ -90,17 +90,15 @@ int main(int argc, char* argv[]) {
 				}
 			}
 			// special case where a matching block extends up to the final haplotype
-			for (int j = start; j < M; ++j) {
-				block[backwardPre[j]] = id;
-			}
+			for (int j = start; j < M; ++j)	block[backwardPre[j]] = id;
 			blockSize[id] = M - start;
 			
-			double MI = 0;	
 			
 			// block finding algorithm
+			double MI = 0; // mutual information
 			start = 0;
 			for (int i = 1; i < M; ++i) {
-				if (div[i] > fp) {
+				if (div[i] >= fp) {
 					// process reverse blocks in the forward block
 					map<int, vector<int>> mp;
 					for (int j = start; j < i; ++j) {
@@ -108,7 +106,7 @@ int main(int argc, char* argv[]) {
 						mp[id].push_back(pre[j]);
 					}
 
-					// go through all candidates and compute MI
+					// go through all blocks and compute MI
 					for (const auto& p: mp) {
 						double pxy = (double)(p.second.size()) / M;
 						double px = (double)(i - start) / M;
@@ -120,24 +118,22 @@ int main(int argc, char* argv[]) {
 				}
 			}
 			// special case where a matching block extends up to the final haplotype
-			{
-				// process reverse blocks in the forward block
-				map<int, vector<int>> mp;
-				for (int j = start; j < M; ++j) {
-					id = block[pre[j]];
-					mp[id].push_back(pre[j]);
-				}
-
-				// go through all candidates and compute MI
-				for (const auto& p: mp) {
-					double pxy = (double)(p.second.size()) / M;
-					double px = (double)(M - start) / M;
-					double py = (double)blockSize[p.first] / M;
-					MI += pxy * log2(pxy / px / py);
-				}
+			// process reverse blocks in the forward block
+			map<int, vector<int>> mp;
+			for (int j = start; j < M; ++j) {
+				id = block[pre[j]];
+				mp[id].push_back(pre[j]);
 			}
 
-			results << positions[site] << ',' << MI << '\n'; 
+			// go through all candidates and compute MI
+			for (const auto& p: mp) {
+				double pxy = (double)(p.second.size()) / M;
+				double px = (double)(M - start) / M;
+				double py = (double)blockSize[p.first] / M;
+				MI += pxy * log2(pxy / px / py);
+			}
+
+			results << positions[site] << ' ' << MI << '\n'; 
 		}
 
 

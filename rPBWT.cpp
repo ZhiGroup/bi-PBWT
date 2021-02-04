@@ -39,6 +39,7 @@ void getM(T& in) {
 
 int main(int argc, char* argv[]) {
 	ios_base::sync_with_stdio(0); cin.tie(0);
+
 	#if defined MEMORY_MAP
 	mapped_file_source file(argv[1]);
 	stream<mapped_file_source> in(file);
@@ -59,7 +60,7 @@ int main(int argc, char* argv[]) {
 	char s[2 * M + 5000]; // assumes fixed fields take up less than 5000 characters
 
 	in.seekg(-1, ios::end);
-	if (in.peek() == '\n') in.seekg(-1, ios::cur); // my process won't work if it starts on a newline character
+	if (in.peek() == '\n') in.seekg(-1, ios::cur); // the process won't work if it starts on a newline character
 	in.seekg(-2 * M, ios::cur);
 	while (in.tellg() >= 0) {
 		// process for reading file backwards
@@ -116,8 +117,8 @@ int main(int argc, char* argv[]) {
 			out.write((char*)&div[i], sizeof div[i]);
 		}
 
-		++site;
 		if (site % checkpoint == 0) cout << "Checkpoint " << site << endl;
+		++site;
 	}
 
 	// create file with site positions

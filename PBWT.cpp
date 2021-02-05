@@ -18,7 +18,7 @@ using namespace boost::iostreams;
 
 using namespace std;
 
-int M, N, L; // # of sequences, # of sites, L
+int M, N, L, G;  // # of sequences, # of sites, L, gap size
 
 int main(int argc, char* argv[]) {
 	ios_base::sync_with_stdio(0); cin.tie(0);
@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
 	ofstream results(writeTo + ".results");
 
 	int checkpoint = atoi(argv[3]);
-	L = atoi(argv[4]);
+	L = atoi(argv[4]), G = atoi(argv[5]);
 
 	// retrieve M and N from meta file
 	meta >> M >> N;
@@ -67,12 +67,12 @@ int main(int argc, char* argv[]) {
 		}
 
 		if (site != 0) {
-			int rsite = (N - 1) - site - 1; // index of the corresponding reverse site
+			int rsite = (N - 1) - site - G; // index of the corresponding reverse site
 			backward.seekg((long long)rsite * M * 8);
 
 			// update genomic pointers
 			while (positions[site - 1] - (fp != -1 ? positions[fp] : 0) >= L) ++fp; // points to first position < L
-			while ((bp < N ? positions[bp] : numeric_limits<int>::max()) - positions[site + 1] < L) ++bp; // points to the first position >= L
+			while ((bp < N ? positions[bp] : numeric_limits<int>::max()) - positions[site + G] < L) ++bp; // points to the first position >= L
 			int rsite_bp = (N - 1) - bp;
 
 			// initialize backward sparse table, idx, backwardPre, and block

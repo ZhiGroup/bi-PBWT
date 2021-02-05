@@ -1,5 +1,23 @@
 #!/bin/bash
 
+if [ $# -eq 0 ]; then
+	echo "Program: Bidirectional PBWT (Positional Burrows-Wheeler Transform)"
+	echo ""
+	echo "Contact: Shaojie Zhang [shzhang@cs.ucf.edu] or Degui Zhi [degui.zhi@uth.tmc.edu]"
+	echo ""
+	echo "Usage: ./biPBWT.sh [options]"
+	echo ""
+	echo "Required Parameters:"
+	echo -e "\t--readVcf <file>\tVCF file"
+	echo ""
+	echo "Optional Parameters:"
+	echo -e "\t--writeTo <filename>\tOutput filename and location"
+	echo -e "\t--length <integer>\tBlock Length (bp) [Default = 500000]"
+	echo -e "\t--gap <integer>\t\tGap Size (site) [Default = 0]"
+	echo -e "\t--checkpoint <integer>\tConsole output every n sites [Default = 100000]"
+	exit 1
+fi
+
 OPTIONS=c:r:w:l:g:
 LONGOPTS=checkpoint:,readVcf:,writeTo:,length:,gap:
 

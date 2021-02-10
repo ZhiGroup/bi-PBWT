@@ -12,19 +12,21 @@ if [ $# -eq 0 ]; then
 	echo ""
 	echo "Optional Parameters:"
 	echo -e "\t--writeTo <filename>\tOutput filename and location"
-	echo -e "\t--length <integer>\tBlock Length (bp) [Default = 500000]"
+	echo -e "\t--length <integer>\tBlock length (base pairs) [Default = 500000]"
+	echo -e "\t--width <integer>\tNumber of haplotypes in block [Default = 100]"
 	echo -e "\t--gap <integer>\t\tGap Size (site) [Default = 0]"
 	echo -e "\t--checkpoint <integer>\tConsole output every n sites [Default = 100000]"
+	echo -e "\t--sites\t\t\tChange units of distances for length from base pairs (default) to sites"
 	exit 1
 fi
 
-OPTIONS=c:r:w:l:g:
-LONGOPTS=checkpoint:,readVcf:,writeTo:,length:,gap:
+OPTIONS=c:r:l:w:g:d:s
+LONGOPTS=checkpoint:,readVcf:,writeTo:,length:,width:,gap:,sites
 
 PARSED=$(getopt --options=$OPTIONS --longoptions=$LONGOPTS --name "$0" -- "$@")
 eval set -- "$PARSED" 
 
-checkpoint=100000 readVcf="" writeTo="" length=50 gap=0
+checkpoint=100000 readVcf="" writeTo="" length=50 width=100 gap=0 sites=0
 while true; do
 	case "$1" in
 		-c|--checkpoint)
@@ -35,7 +37,7 @@ while true; do
 			readVcf="$2"
 			shift 2
 			;;
-		-w|--writeTo)
+		--writeTo)
 			writeTo="$2"
 			shift 2
 			;;
@@ -43,9 +45,17 @@ while true; do
 			length="$2"
 			shift 2
 			;;
+		-w|--width)
+			width="$2"
+			shift 2
+			;;
 		-g|--gap)
 			gap="$2"
 			shift 2
+			;;
+		-s|--sites)
+			sites=1
+			shift
 			;;
 		--)
 			shift
@@ -63,6 +73,6 @@ fi
 echo "Running rPBWT..."
 ./rPBWT "$readVcf" "$writeTo" "$checkpoint"
 echo "Running PBWT..."
-./PBWT "$readVcf" "$writeTo" "$checkpoint" "$length" "$gap"
+./PBWT "$readVcf" "$writeTo" "$checkpoint" "$length" "$width" "$gap" "$sites"
 rm "${writeTo}.rpbwt" "${writeTo}.sites" "${writeTo}.meta"
 echo "biPBWT Finished."

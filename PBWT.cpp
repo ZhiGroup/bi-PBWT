@@ -57,7 +57,6 @@ struct State {
 
 int p1 = 0;
 vector<vector<int>> gap; // stores haplotype data in the gap
-
 int getGap(int g, int idx) {
 	int jump = G - g;
 	return gap[(p1 + G - jump) % G][idx];
@@ -77,7 +76,14 @@ int main(int argc, char* argv[]) {
 	ofstream results(writeTo + ".results"), resultIDs(writeTo + ".IDs"), resultMI(writeTo + ".MI");
 
 	int checkpoint = atoi(argv[3]);
-	L = atoi(argv[4]), G = atoi(argv[5]);
+	L = atoi(argv[4]), W = atoi(argv[5]), G = atoi(argv[6]);
+
+	// special case for zero sized gap - treated like G = 1 for PBWT and VCF processing, and treated like G = 0 for the 3 algorithms
+	bool zeroGap = false;
+	if (G == 0) {
+		zeroGap = true;
+		G = 1;
+	}
 
 	// retrieve M and N from meta file
 	meta >> M >> N;
@@ -127,13 +133,20 @@ int main(int argc, char* argv[]) {
 	}
 
 	for (int site = 0; site + G < N; ++site) {
+		if (zeroGap) G = 0;
 		if (site != 0) {
 			int rsite = (N - 1) - site - G; // index of the corresponding reverse site
 			backward.seekg((long long)rsite * M * 8);
 
 			// update genomic pointers
-			while (positions[site - 1] - (fp != -1 ? positions[fp] : 0) >= L) ++fp; // points to first position < L
-			while ((bp < N ? positions[bp] : numeric_limits<int>::max()) - positions[site + G] < L) ++bp; // points to the first position >= L
+			if (string(argv[7]) == "0") {
+				while (positions[site - 1] - (fp != -1 ? positions[fp] - 1 : 0) >= L) ++fp; // points to first position < L
+				while ((bp < N ? positions[bp] + 1 : numeric_limits<int>::max()) - positions[site + G] < L) ++bp; // points to the first position >= L
+			}
+			if (string(argv[7]) == "1") {
+				fp = site - L + 2; // points to first position < L (to maintain consistency with base pair length)
+				bp = site + G + L - 1; // points to the first position >= L (to maintain consistency with base pair length)
+			}
 			int rsite_bp = (N - 1) - bp;
 
 			// initialize backward sparse table, idx, backwardPre, and block
@@ -201,12 +214,10 @@ int main(int argc, char* argv[]) {
 
 						int fL = (site - 1) - forwardSparse.query(state.f_mini + 1, state.f_maxi) + 1; // length of forward block
 						int rL = rsite - backwardSparse.query(state.r_mini + 1, state.r_maxi) + 1; // length of reverse block
-
-						if (fL >= L && rL >= L) {
-							results << site << ' ' << positions[site] << ' ' << fL << ' ' << rL << ' ' << positions[site - fL] << ' ' << positions[site + G + rL - 1] << ' ' << (int)state.IDs.size() << '\n';
-							for (int j = 0; j < (int)state.IDs.size(); ++j) resultIDs << ID[state.IDs[j]] << ' ';
-							resultIDs << '\n';
-						}
+						
+						results << site << ' ' << positions[site] << ' ' << fL << ' ' << rL << ' ' << positions[site - fL] << ' ' << positions[site + G + rL - 1] << ' ' << (int)state.IDs.size() << '\n';
+						for (int j = 0; j < (int)state.IDs.size(); ++j) resultIDs << ID[state.IDs[j]] << ' ';
+						resultIDs << '\n';
 					}
 					start = i;
 				}
@@ -246,16 +257,14 @@ int main(int argc, char* argv[]) {
 				int fL = (site - 1) - forwardSparse.query(state.f_mini + 1, state.f_maxi) + 1; // length of forward block
 				int rL = rsite - backwardSparse.query(state.r_mini + 1, state.r_maxi) + 1; // length of reverse block
 
-				if (fL >= L && rL >= L) {
-					results << site << ' ' << positions[site] << ' ' << fL << ' ' << rL << ' ' << positions[site - fL] << ' ' << positions[site + G + rL - 1] << ' ' << (int)state.IDs.size() << '\n';
-					for (int j = 0; j < (int)state.IDs.size(); ++j) resultIDs << ID[state.IDs[j]] << ' ';
-					resultIDs << '\n';
-				}
+				results << site << ' ' << positions[site] << ' ' << fL << ' ' << rL << ' ' << positions[site - fL] << ' ' << positions[site + G + rL - 1] << ' ' << (int)state.IDs.size() << '\n';
+				for (int j = 0; j < (int)state.IDs.size(); ++j) resultIDs << ID[state.IDs[j]] << ' ';
+				resultIDs << '\n';
 			}
 
 			resultMI << positions[site] << ' ' << MI << '\n'; 
 		}
-
+		if (zeroGap) G = 1;
 
 		// pbwt algorithm
 		int u = 0, v = 0, p = site + 1, q = site + 1;

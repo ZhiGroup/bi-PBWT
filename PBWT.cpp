@@ -73,7 +73,7 @@ int main(int argc, char* argv[]) {
 	ifstream backward(writeTo + ".rpbwt");
 	#endif
 	ifstream in(argv[1]), sites(writeTo + ".sites"), meta(writeTo + ".meta");
-	ofstream results(writeTo + ".results"), resultIDs(writeTo + ".IDs"), resultMI(writeTo + ".MI");
+	ofstream clusters(writeTo + ".clusters"), clusterIDs(writeTo + ".IDs"), resultMI(writeTo + ".MI");
 
 	int checkpoint = atoi(argv[3]);
 	L = atoi(argv[4]), W = atoi(argv[5]), G = atoi(argv[6]);
@@ -102,8 +102,9 @@ int main(int argc, char* argv[]) {
 	vector<string> ID(M);
 	stringstream ss(header);
 	for (int i = 0; i < 9; ++i) getline(ss, ID[0], '\t'); // skip fixed columns, assumes 9 columns (FORMAT column) 
-	for (int i = 0; i < M; ++i) {
-		getline(ss, ID[i], '\t');
+	for (int i = 0; i < M / 2; ++i) {
+		getline(ss, ID[2 * i], '\t');
+		ID[2 * i + 1] = ID[2 * i];
 	}
 
 	vector<int> pre(M), div(M); // prefix and divergence array
@@ -215,9 +216,9 @@ int main(int argc, char* argv[]) {
 						int fL = (site - 1) - forwardSparse.query(state.f_mini + 1, state.f_maxi) + 1; // length of forward block
 						int rL = rsite - backwardSparse.query(state.r_mini + 1, state.r_maxi) + 1; // length of reverse block
 						
-						results << site << ' ' << positions[site] << ' ' << fL << ' ' << rL << ' ' << positions[site - fL] << ' ' << positions[site + G + rL - 1] << ' ' << (int)state.IDs.size() << '\n';
-						for (int j = 0; j < (int)state.IDs.size(); ++j) resultIDs << ID[state.IDs[j]] << ' ';
-						resultIDs << '\n';
+						clusters << site << ' ' << positions[site] << ' ' << fL << ' ' << rL << ' ' << positions[site - fL] << ' ' << positions[site + G + rL - 1] << ' ' << (int)state.IDs.size() << '\n';
+						for (int j = 0; j < (int)state.IDs.size(); ++j) clusterIDs << ID[state.IDs[j]] << ' ';
+						clusterIDs << '\n';
 					}
 					start = i;
 				}
@@ -257,9 +258,9 @@ int main(int argc, char* argv[]) {
 				int fL = (site - 1) - forwardSparse.query(state.f_mini + 1, state.f_maxi) + 1; // length of forward block
 				int rL = rsite - backwardSparse.query(state.r_mini + 1, state.r_maxi) + 1; // length of reverse block
 
-				results << site << ' ' << positions[site] << ' ' << fL << ' ' << rL << ' ' << positions[site - fL] << ' ' << positions[site + G + rL - 1] << ' ' << (int)state.IDs.size() << '\n';
-				for (int j = 0; j < (int)state.IDs.size(); ++j) resultIDs << ID[state.IDs[j]] << ' ';
-				resultIDs << '\n';
+				clusters << site << ' ' << positions[site] << ' ' << fL << ' ' << rL << ' ' << positions[site - fL] << ' ' << positions[site + G + rL - 1] << ' ' << (int)state.IDs.size() << '\n';
+				for (int j = 0; j < (int)state.IDs.size(); ++j) clusterIDs << ID[state.IDs[j]] << ' ';
+				clusterIDs << '\n';
 			}
 
 			resultMI << positions[site] << ' ' << MI << '\n'; 
@@ -314,8 +315,8 @@ int main(int argc, char* argv[]) {
 	in.close();
 	sites.close();
 	meta.close();
-	results.close();
-	resultIDs.close();
+	clusters.close();
+	clusterIDs.close();
 	resultMI.close();
 
 	return 0;

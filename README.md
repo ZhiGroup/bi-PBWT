@@ -6,6 +6,7 @@ Bidirectional PBWT is an efficient method to find clusters of matches around eac
 ## Dependencies
 - C++ (at least GCC 5)  
 - GNU Make  
+- GNU getopt
 - Bash  
 - [Optional] Boost C++ Libraries (required for memory mapped files)
 
@@ -29,12 +30,12 @@ by itself to show the help page.
 |         Option         |                         Parameter                        |                                                    Description                                                    |
 |:----------------------:|:--------------------------------------------------------:|:-----------------------------------------------------------------------------------------------------------------:|
 | `-r` or `--readVcf`    | Full or relative file path to input VCF file             | Sets the input VCF file on which to run biPBWT.                                                                   |
-| `--writeTo`            | Full or relative file path and filename for output files | Sets the location and filename for biPBWT output files. The default option is the VCF filename.                   |
+| `-o` or `--writeTo`            | Full or relative file path and filename for output files | Sets the location and filename for biPBWT output files. The default option is the VCF filename.                   |
 | `-l` or `--length`     | Block length (in units of base pairs)                    | Sets the minimum length requirement for blocks. The default value is 500,000 base pairs.                          |
 | `-w` or `--width`      | Block width                                              | Sets the minimum number of haplotypes required for a block to be reported. The default value is 100 haplotypes.   |
 | `-g` or `--gap`        | Gap size (in units of sites)                             | Sets the size of the gap in the block. The default value is 1 site.                                               |
 | `-c` or `--checkpoint` | Checkpoint interval `n`                                  | biPBWT will print a checkpoint message to console every `n` sites. The default value is 100,000.                  |
-| `--sites`              | `None`                                                   | Change the units of distance for length to sites. The default is base pairs.                                      |
+| `-s` or `--sites`              | `None`                                                   | Change the units of distance for length to sites. The default is base pairs.                                      |
 
 An example:  
 `./biPBWT.sh --readVcf "example.vcf" --writeTo "output" --length 500000 --width 100 --gap 0 --checkpoint 100000`  

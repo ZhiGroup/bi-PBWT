@@ -20,7 +20,7 @@ if [ $# -eq 0 ]; then
 	exit 1
 fi
 
-OPTIONS=c:r:l:w:g:d:s
+OPTIONS=c:r:o:l:w:g:s
 LONGOPTS=checkpoint:,readVcf:,writeTo:,length:,width:,gap:,sites
 
 PARSED=$(getopt --options=$OPTIONS --longoptions=$LONGOPTS --name "$0" -- "$@")
@@ -37,7 +37,7 @@ while true; do
 			readVcf="$2"
 			shift 2
 			;;
-		--writeTo)
+		-o|--writeTo)
 			writeTo="$2"
 			shift 2
 			;;

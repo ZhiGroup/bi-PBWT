@@ -132,7 +132,8 @@ int main(int argc, char* argv[]) {
 	for (int i = 0; i < 9; ++i) getline(ss, ID[0], '\t'); // skip fixed columns, assumes 9 columns (FORMAT column) 
 	for (int i = 0; i < M / 2; ++i) {
 		getline(ss, ID[2 * i], '\t');
-		ID[2 * i + 1] = ID[2 * i];
+		ID[2 * i + 1] = ID[2 * i] + "-2";
+		ID[2 * i] += "-1";
 	}
 
 	vector<int> pre(M), div(M); // prefix and divergence array

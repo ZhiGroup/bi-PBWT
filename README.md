@@ -45,7 +45,7 @@ When finished executing, biPBWT will generate 3 files with the extensions ".clus
 
 The file ".clusters" represents each cluster on its own line with seven space seperated fields "site k" "genomic location of site k" "forward length (in sites)" "reverse length (in sites)" "starting genomic location of block" "ending genomic location of block" "width of block".
 
-The file ".IDs" will have the same number of lines as the ".clusters" file with each line representing the ID's of all the haplotypes in the cluster on the same line in the ".cluster" file.
+The file ".IDs" will have the same number of lines as the ".clusters" file with each line representing the ID's of all the haplotypes in the cluster on the same line in the ".cluster" file. IDs are suffixed with either "-1" or "-2" indicating the first and second haplotype of the individual ID, respectively.
 
 The file ".MI" has two space seperated values on each line representing "genomic location" "mutual information value".
 

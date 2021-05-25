@@ -36,7 +36,7 @@ struct SparseTable {
 		int cur = 0; // sliding mask
 		for (int i = 0; i < N; ++i) {
 			cur = (cur << 1) & ((1 << B) - 1);
-			while (cur > 0 && min(v[i], v[i - msb(lsb(cur))]) == v[i]) cur ^= lsb(cur); 
+			while (cur > 0 && max(v[i], v[i - msb(lsb(cur))]) == v[i]) cur ^= lsb(cur); 
 			cur |= 1;
 			mask[i] = cur;
 		}
@@ -61,7 +61,7 @@ struct SparseTable {
 
 	int query(int l, int r) {
 		if (r - l + 1 <= B) return mini_query(r, r - l + 1);
-		int ret = min(mini_query(l + B - 1), mini_query(r));
+		int ret = max(mini_query(l + B - 1), mini_query(r));
 		int blockL = l / B + 1, blockR = r / B - 1;
 		if (blockL <= blockR) {
 			int j = msb(blockR - blockL + 1);

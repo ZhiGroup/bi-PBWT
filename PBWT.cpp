@@ -21,25 +21,53 @@ using namespace std;
 int M, N, L, W, G;  // # of sequences, # of sites, length, width, gap size
 
 struct SparseTable {
-	int N;
+	static const int B = 30;
+	int N, blocks;
+	vector<int> v, mask;
 	vector<vector<int>> table;
 
-	SparseTable(int _N) {
-		this->N = _N;
-		table = vector<vector<int>>(N, vector<int>((int)log2(N) + 1));
-	}
-	
-	void init() {
-		for (int j = 1; (1 << j) <= N; ++j) {
-			for (int i = 0; (i + (1 << j) - 1) < N; ++i) {
+	SparseTable(vector<int> _v) {
+		this->v = _v;
+		this->N = (int)v.size();
+		blocks = N / B;
+		mask = vector<int>(N);	
+		table = vector<vector<int>>(blocks, vector<int>(msb(blocks) + 1));
+
+		int cur = 0; // sliding mask
+		for (int i = 0; i < N; ++i) {
+			cur = (cur << 1) & ((1 << B) - 1);
+			while (cur > 0 && min(v[i], v[i - msb(lsb(cur))]) == v[i]) cur ^= lsb(cur); 
+			cur |= 1;
+			mask[i] = cur;
+		}
+
+		for (int i = 0; i < blocks; ++i) table[i][0] = mini_query(B * i + B - 1);
+		for (int j = 1; (1 << j) <= blocks; ++j) {
+			for (int i = 0; i + (1 << j) - 1 < blocks; ++i) {
 				table[i][j] = max(table[i][j - 1], table[i + (1 << (j - 1))][j - 1]);
 			}
 		}
 	}
 
-	int query(int l, int r) { //inclusive range
-		int j = (int)log2(r - l + 1);
-		return max(table[l][j], table[r - (1 << j) + 1][j]);
+	// least significant set bit
+	int lsb(int num) {return num & -num;}
+
+	// index of most significant set bit
+	int msb(int num) {return __builtin_clz(1) - __builtin_clz(num);}
+
+	int mini_query(int r, int len = B) {
+		return v[r - msb(mask[r] & ((1 << len) - 1))];
+	}
+
+	int query(int l, int r) {
+		if (r - l + 1 <= B) return mini_query(r, r - l + 1);
+		int ret = min(mini_query(l + B - 1), mini_query(r));
+		int blockL = l / B + 1, blockR = r / B - 1;
+		if (blockL <= blockR) {
+			int j = msb(blockR - blockL + 1);
+			ret = max({ret, table[blockL][j], table[blockR - (1 << j) + 1][j]});
+		}
+		return ret;
 	}
 };
 
@@ -111,7 +139,6 @@ int main(int argc, char* argv[]) {
 	iota(pre.begin(), pre.end(), 0);
 	vector<int> a(M), b(M), d(M), e(M);
 	char s[2 * M + 5000]; // assumes fixed fields take up less than 5000 characters
-	SparseTable forwardSparse(M), backwardSparse(M);
 	vector<int> idx(M); // idx[i] = index of sample i in the reverse positional prefix array
 	vector<int> backwardPre(M), block(M), blockSize(M + 1); // block[i] = block ID of sample i in the reverse PBWT
 	gap = vector<vector<int>>(G, vector<int>(M));
@@ -152,11 +179,12 @@ int main(int argc, char* argv[]) {
 
 			// initialize backward sparse table, idx, backwardPre, and block
 			int start = -1, id = 0;
+			vector<int> rDivs(M);
 			for (int i = 0; i < M; ++i) {
 				backward.read((char*)&backwardPre[i], sizeof backwardPre[i]);
 				idx[backwardPre[i]] = i;
 				int rDiv; backward.read((char*)&rDiv, sizeof rDiv);
-				backwardSparse.table[i][0] = rDiv;
+				rDivs[i] = rDiv;
 
 				if (rDiv > rsite_bp) {
 					for (int j = start; j < i && j != -1; ++j) block[backwardPre[j]] = id;
@@ -168,13 +196,8 @@ int main(int argc, char* argv[]) {
 			// special case where a matching block extends up to the final haplotype
 			for (int j = start; j < M; ++j)	block[backwardPre[j]] = id;
 			blockSize[id] = M - start;
-			
-			// initialize forward sparse table
-			for (int i = 0; i < M; ++i) forwardSparse.table[i][0] = div[i];
 
-			// build both sparse tables
-			forwardSparse.init();
-			backwardSparse.init();
+			SparseTable forwardSparse(div), backwardSparse(rDivs);
 			
 			// block finding algorithm
 			double MI = 0; // mutual information

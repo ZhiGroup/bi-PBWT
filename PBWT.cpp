@@ -143,7 +143,6 @@ int main(int argc, char* argv[]) {
 	vector<int> idx(M); // idx[i] = index of sample i in the reverse positional prefix array
 	vector<int> backwardPre(M), block(M), blockSize(M + 1); // block[i] = block ID of sample i in the reverse PBWT
 	gap = vector<vector<int>>(G, vector<int>(M));
-	int fp = -1, bp = 0; // pointers for gemomic distance
 
 	// initialize the gap
 	for (int site = 0; site < G; ++site) {
@@ -167,17 +166,6 @@ int main(int argc, char* argv[]) {
 			int rsite = (N - 1) - site - G; // index of the corresponding reverse site
 			backward.seekg((long long)rsite * M * 8);
 
-			// update genomic pointers
-			if (string(argv[7]) == "0") {
-				while (positions[site - 1] - (fp != -1 ? positions[fp] - 1 : 0) >= L) ++fp; // points to first position < L
-				while ((bp < N ? positions[bp] + 1 : numeric_limits<int>::max()) - positions[site + G] < L) ++bp; // points to the first position >= L
-			}
-			if (string(argv[7]) == "1") {
-				fp = site - L + 2; // points to first position < L (to maintain consistency with base pair length)
-				bp = site + G + L - 1; // points to the first position >= L (to maintain consistency with base pair length)
-			}
-			int rsite_bp = (N - 1) - bp;
-
 			// initialize backward sparse table, idx, backwardPre, and block
 			int start = -1, id = 0;
 			vector<int> rDivs(M);
@@ -186,8 +174,9 @@ int main(int argc, char* argv[]) {
 				idx[backwardPre[i]] = i;
 				int rDiv; backward.read((char*)&rDiv, sizeof rDiv);
 				rDivs[i] = rDiv;
+				rDiv = (N - 1) - rDiv; // get forward index for position comparision
 
-				if (rDiv > rsite_bp) {
+				if ((string(argv[7]) == "0" && positions[rDiv] < positions[site + G] + L) || (string(argv[7]) == "1" && rDiv < site + G + L)) {
 					for (int j = start; j < i && j != -1; ++j) block[backwardPre[j]] = id;
 					blockSize[id] = i - start;
 					++id;
@@ -204,7 +193,7 @@ int main(int argc, char* argv[]) {
 			double MI = 0; // mutual information
 			start = 0;
 			for (int i = 1; i < M; ++i) {
-				if (div[i] >= fp) {
+				if ((string(argv[7]) == "0" && positions[div[i]] > positions[site] - L) || (string(argv[7]) == "1" && div[i] > site - L)) {
 					// process reverse blocks in the forward block
 					map<int, State> mp;
 					for (int j = start; j < i; ++j) {

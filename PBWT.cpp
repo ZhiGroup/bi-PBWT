@@ -10,7 +10,6 @@ using namespace boost::iostreams;
 #include <vector>
 #include <cmath>
 #include <numeric>
-#include <limits>
 #include <map>
 #include <cassert>
 #include <cstring>
@@ -90,6 +89,57 @@ int getGap(int g, int idx) {
 	return gap[(p1 + G - jump) % G][idx];
 }
 
+void countingSort(vector<vector<int>>& v, int idx) {
+	vector<vector<vector<int>>> table(M + 1);
+	for (int i = 0; i < M; ++i) {
+		table[v[i][idx]].push_back(v[i]);
+	}
+	int p = 0;
+	for (int i = 0; i <= M; ++i) {
+		for (int j = 0; j < (int)table[i].size(); ++j) {
+			v[p++] = table[i][j];
+		}
+	}
+}
+
+void processBlock(vector<vector<int>>& link, int start, int end, vector<int>& idx, vector<int>& rIdx, SparseTable& forwardSparse, SparseTable& backwardSparse, int site, int rsite, vector<int>& positions, vector<string>& ID, ofstream& clusters, ofstream& clusterIDs, double& MI, vector<int>& blockSize, vector<int>& rBlockSize) { // [start, end)
+	// compute MI
+	double pxy = (double)(end - start) / M;
+	double px = (double)blockSize[link[start][1]] / M;
+	double py = (double)rBlockSize[link[start][2]] / M;
+	MI += pxy * log2(pxy / px / py);
+	
+	if (end - start < W) return; // width too small
+	
+	int f_mini = M - 1, f_maxi = 0, r_mini = M - 1, r_maxi = 0;
+	vector<int> zero(G), one(G);
+	for (int j = start; j < end; ++j) {
+		int id = link[j][0];
+		f_mini = min(f_mini, idx[id]);
+		f_maxi = max(f_maxi, idx[id]);
+		r_mini = min(r_mini, rIdx[id]);
+		r_maxi = max(r_maxi, rIdx[id]);
+		for (int k = 0; k < G; ++k) {
+			if (getGap(k, id) == 0) ++zero[k];
+			else ++one[k];
+		}
+	}
+
+	// check if every site in the gap has a mismatch
+	bool flag = false;
+	for (int k = 0; k < G; ++k) {
+		if (min(zero[k], one[k]) == 0) flag = true; // no mismatch at this site in the gap
+	}
+	if (flag) return;
+
+	int fL = (site - 1) - forwardSparse.query(f_mini + 1, f_maxi) + 1; // length of forward block
+	int rL = rsite - backwardSparse.query(r_mini + 1, r_maxi) + 1; // length of reverse block
+
+	clusters << site << ' ' << positions[site] << ' ' << fL << ' ' << rL << ' ' << positions[site - fL] << ' ' << positions[site + G + rL - 1] << ' ' << (end - start) << '\n';
+	for (int j = start; j < end; ++j) clusterIDs << ID[link[j][0]] << ' ';
+	clusterIDs << '\n';
+}
+
 int main(int argc, char* argv[]) {
 	ios_base::sync_with_stdio(0); cin.tie(0);
 
@@ -136,12 +186,12 @@ int main(int argc, char* argv[]) {
 		ID[2 * i] += "-1";
 	}
 
-	vector<int> pre(M), div(M); // prefix and divergence array
+	vector<int> pre(M), div(M), backwardPre(M), backwardDiv(M); // prefix and divergence arrays for forward and backward PBWT
 	iota(pre.begin(), pre.end(), 0);
 	vector<int> a(M), b(M), d(M), e(M);
 	char s[2 * M + 5000]; // assumes fixed fields take up less than 5000 characters
-	vector<int> idx(M); // idx[i] = index of sample i in the reverse positional prefix array
-	vector<int> backwardPre(M), block(M), blockSize(M + 1); // block[i] = block ID of sample i in the reverse PBWT
+	vector<int> idx(M), rIdx(M); // idx[i] = index of sample i in the positional prefix array; r = reverse
+	vector<int> block(M), blockSize(M + 1), rBlock(M), rBlockSize(M + 1); // block[i] = block ID of sample i in the reverse PBWT; block IDs go from [1, M]
 	gap = vector<vector<int>>(G, vector<int>(M));
 
 	// initialize the gap
@@ -166,115 +216,61 @@ int main(int argc, char* argv[]) {
 			int rsite = (N - 1) - site - G; // index of the corresponding reverse site
 			backward.seekg((long long)rsite * M * 8);
 
-			// initialize backward sparse table, idx, backwardPre, and block
+			// initialize rIdx, backwardPre, rBlock, and rBlockSize
 			int start = -1, id = 0;
-			vector<int> rDivs(M);
 			for (int i = 0; i < M; ++i) {
 				backward.read((char*)&backwardPre[i], sizeof backwardPre[i]);
-				idx[backwardPre[i]] = i;
+				rIdx[backwardPre[i]] = i;
 				int rDiv; backward.read((char*)&rDiv, sizeof rDiv);
-				rDivs[i] = rDiv;
+				backwardDiv[i] = rDiv;
 				rDiv = (N - 1) - rDiv; // get forward index for position comparision
 
 				if ((string(argv[7]) == "0" && positions[rDiv] < positions[site + G] + L) || (string(argv[7]) == "1" && rDiv < site + G + L)) {
-					for (int j = start; j < i && j != -1; ++j) block[backwardPre[j]] = id;
+					for (int j = start; j < i && j != -1; ++j) rBlock[backwardPre[j]] = id;
+					rBlockSize[id] = i - start;
+					++id;
+					start = i;
+				}
+			}
+			// special case where a matching block extends up to the final haplotype
+			for (int j = start; j < M; ++j)	rBlock[backwardPre[j]] = id;
+			rBlockSize[id] = M - start;
+
+			// initialize idx, block, and blockSize
+			start = -1, id = 0;
+			for (int i = 0; i < M; ++i) {
+				idx[pre[i]] = i;
+				if ((string(argv[7]) == "0" && positions[div[i]] > positions[site] - L) || (string(argv[7]) == "1" && div[i] > site - L)) {
+					for (int j = start; j < i && j != -1; ++j) block[pre[j]] = id;
 					blockSize[id] = i - start;
 					++id;
 					start = i;
 				}
 			}
 			// special case where a matching block extends up to the final haplotype
-			for (int j = start; j < M; ++j)	block[backwardPre[j]] = id;
+			for (int j = start; j < M; ++j) block[pre[j]] = id;
 			blockSize[id] = M - start;
 
-			SparseTable forwardSparse(div), backwardSparse(rDivs);
-			
-			// block finding algorithm
+			SparseTable forwardSparse(div), backwardSparse(backwardDiv); // build sparse tables
+
+			// Algorithm 2 - block matching
+			vector<vector<int>> link(M, vector<int>(3)); // [sample ID, forward block ID, reverse block ID]
+			for (int i = 0; i < M; ++i) {
+				link[i][0] = i, link[i][1] = block[i], link[i][2] = rBlock[i];
+			}
+			// radix sort
+			countingSort(link, 2);
+			countingSort(link, 1);
+
 			double MI = 0; // mutual information
 			start = 0;
 			for (int i = 1; i < M; ++i) {
-				if ((string(argv[7]) == "0" && positions[div[i]] > positions[site] - L) || (string(argv[7]) == "1" && div[i] > site - L)) {
-					// process reverse blocks in the forward block
-					map<int, State> mp;
-					for (int j = start; j < i; ++j) {
-						id = block[pre[j]];
-						if (id == -1) continue;
-						mp[id].f_mini = min(mp[id].f_mini, j);
-						mp[id].f_maxi = max(mp[id].f_maxi, j);
-						mp[id].r_mini = min(mp[id].r_mini, idx[pre[j]]);
-						mp[id].r_maxi = max(mp[id].r_maxi, idx[pre[j]]);
-						mp[id].IDs.push_back(pre[j]);
-						for (int k = 0; k < G; ++k) {
-							if (getGap(k, pre[j]) == 0) ++mp[id].zero[k];
-							else ++mp[id].one[k];
-						}
-					}
-
-					// go through all candidates
-					for (const auto& p: mp) {
-						State state = p.second;
-						// compute MI
-						double pxy = (double)((int)state.IDs.size()) / M;
-						double px = (double)(i - start) / M;
-						double py = (double)blockSize[p.first] / M;
-						MI += pxy * log2(pxy / px / py);
-
-						if ((int)state.IDs.size() < W) continue; // width too small
-						bool flag = false;
-						for (int j = 0; j < G; ++j) {
-							if (min(state.zero[j], state.one[j]) == 0) flag = true; // no mismatch at this site in the gap
-						}
-						if (flag) continue;
-
-						int fL = (site - 1) - forwardSparse.query(state.f_mini + 1, state.f_maxi) + 1; // length of forward block
-						int rL = rsite - backwardSparse.query(state.r_mini + 1, state.r_maxi) + 1; // length of reverse block
-						
-						clusters << site << ' ' << positions[site] << ' ' << fL << ' ' << rL << ' ' << positions[site - fL] << ' ' << positions[site + G + rL - 1] << ' ' << (int)state.IDs.size() << '\n';
-						for (int j = 0; j < (int)state.IDs.size(); ++j) clusterIDs << ID[state.IDs[j]] << ' ';
-						clusterIDs << '\n';
-					}
-					start = i;
+				if (link[i][1] != link[i - 1][1] || link[i][2] != link[i - 1][2]) {
+					processBlock(link, start, i, idx, rIdx, forwardSparse, backwardSparse, site, rsite, positions, ID, clusters, clusterIDs, MI, blockSize, rBlockSize);
+					start = i;	
 				}
 			}
-			// special case where a matching block extends up to the final haplotype
-			// process reverse blocks in the forward block
-			map<int, State> mp;
-			for (int j = start; j < M; ++j) {
-				id = block[pre[j]];
-				if (id == -1) continue;
-				mp[id].f_mini = min(mp[id].f_mini, j);
-				mp[id].f_maxi = max(mp[id].f_maxi, j);
-				mp[id].r_mini = min(mp[id].r_mini, idx[pre[j]]);
-				mp[id].r_maxi = max(mp[id].r_maxi, idx[pre[j]]);
-				mp[id].IDs.push_back(pre[j]);
-				for (int k = 0; k < G; ++k) {
-					if (getGap(k, pre[j]) == 0) ++mp[id].zero[k];
-					else ++mp[id].one[k];
-				}
-			}
-			// go through all candidates
-			for (const auto& p: mp) {
-				State state = p.second;
-				// compute MI
-				double pxy = (double)((int)state.IDs.size()) / M;
-				double px = (double)(M - start) / M;
-				double py = (double)blockSize[p.first] / M;
-				MI += pxy * log2(pxy / px / py);
-
-				if ((int)state.IDs.size() < W) continue; // width too small
-				bool flag = false;
-				for (int j = 0; j < G; ++j) {
-					if (min(state.zero[j], state.one[j]) == 0) flag = true; // no mismatch at this site in the gap
-				}
-				if (flag) continue;
-
-				int fL = (site - 1) - forwardSparse.query(state.f_mini + 1, state.f_maxi) + 1; // length of forward block
-				int rL = rsite - backwardSparse.query(state.r_mini + 1, state.r_maxi) + 1; // length of reverse block
-
-				clusters << site << ' ' << positions[site] << ' ' << fL << ' ' << rL << ' ' << positions[site - fL] << ' ' << positions[site + G + rL - 1] << ' ' << (int)state.IDs.size() << '\n';
-				for (int j = 0; j < (int)state.IDs.size(); ++j) clusterIDs << ID[state.IDs[j]] << ' ';
-				clusterIDs << '\n';
-			}
+			processBlock(link, start, M, idx, rIdx, forwardSparse, backwardSparse, site, rsite, positions, ID, clusters, clusterIDs, MI, blockSize, rBlockSize);
 
 			resultMI << positions[site] << ' ' << MI << '\n'; 
 		}

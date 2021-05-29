@@ -102,7 +102,7 @@ void countingSort(vector<vector<int>>& v, int idx) {
 	}
 }
 
-void processBlock(vector<vector<int>>& link, int start, int end, vector<int>& idx, vector<int>& rIdx, SparseTable& forwardSparse, SparseTable& backwardSparse, int site, int rsite, vector<int>& positions, vector<string>& ID, ofstream& clusters, ofstream& clusterIDs, double& MI, vector<int>& blockSize, vector<int>& rBlockSize) { // [start, end)
+void processBlock(vector<vector<int>>& link, int start, int end, vector<int>& idx, vector<int>& rIdx, SparseTable& forwardSparse, SparseTable& backwardSparse, int site, int rsite, vector<int>& positions, vector<string>& ID, ofstream& blocks, ofstream& blockIDs, double& MI, vector<int>& blockSize, vector<int>& rBlockSize) { // [start, end)
 	// compute MI
 	double pxy = (double)(end - start) / M;
 	double px = (double)blockSize[link[start][1]] / M;
@@ -135,9 +135,9 @@ void processBlock(vector<vector<int>>& link, int start, int end, vector<int>& id
 	int fL = (site - 1) - forwardSparse.query(f_mini + 1, f_maxi) + 1; // length of forward block
 	int rL = rsite - backwardSparse.query(r_mini + 1, r_maxi) + 1; // length of reverse block
 
-	clusters << site << ' ' << positions[site] << ' ' << fL << ' ' << rL << ' ' << positions[site - fL] << ' ' << positions[site + G + rL - 1] << ' ' << (end - start) << '\n';
-	for (int j = start; j < end; ++j) clusterIDs << ID[link[j][0]] << ' ';
-	clusterIDs << '\n';
+	blocks << site << ' ' << positions[site] << ' ' << fL << ' ' << rL << ' ' << positions[site - fL] << ' ' << positions[site + G + rL - 1] << ' ' << (end - start) << '\n';
+	for (int j = start; j < end; ++j) blockIDs << ID[link[j][0]] << ' ';
+	blockIDs << '\n';
 }
 
 int main(int argc, char* argv[]) {
@@ -151,7 +151,7 @@ int main(int argc, char* argv[]) {
 	ifstream backward(writeTo + ".rpbwt");
 	#endif
 	ifstream in(argv[1]), sites(writeTo + ".sites"), meta(writeTo + ".meta");
-	ofstream clusters(writeTo + ".clusters"), clusterIDs(writeTo + ".IDs"), resultMI(writeTo + ".MI");
+	ofstream blocks(writeTo + ".blocks"), blockIDs(writeTo + ".IDs"), resultMI(writeTo + ".MI");
 
 	int checkpoint = atoi(argv[3]);
 	L = atoi(argv[4]), W = atoi(argv[5]), G = atoi(argv[6]);
@@ -266,11 +266,11 @@ int main(int argc, char* argv[]) {
 			start = 0;
 			for (int i = 1; i < M; ++i) {
 				if (link[i][1] != link[i - 1][1] || link[i][2] != link[i - 1][2]) {
-					processBlock(link, start, i, idx, rIdx, forwardSparse, backwardSparse, site, rsite, positions, ID, clusters, clusterIDs, MI, blockSize, rBlockSize);
+					processBlock(link, start, i, idx, rIdx, forwardSparse, backwardSparse, site, rsite, positions, ID, blocks, blockIDs, MI, blockSize, rBlockSize);
 					start = i;	
 				}
 			}
-			processBlock(link, start, M, idx, rIdx, forwardSparse, backwardSparse, site, rsite, positions, ID, clusters, clusterIDs, MI, blockSize, rBlockSize);
+			processBlock(link, start, M, idx, rIdx, forwardSparse, backwardSparse, site, rsite, positions, ID, blocks, blockIDs, MI, blockSize, rBlockSize);
 
 			resultMI << positions[site] << ' ' << MI << '\n'; 
 		}
@@ -324,8 +324,8 @@ int main(int argc, char* argv[]) {
 	in.close();
 	sites.close();
 	meta.close();
-	clusters.close();
-	clusterIDs.close();
+	blocks.close();
+	blockIDs.close();
 	resultMI.close();
 
 	return 0;

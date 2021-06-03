@@ -225,7 +225,7 @@ int main(int argc, char* argv[]) {
 				backwardDiv[i] = rDiv;
 				rDiv = (N - 1) - rDiv; // get forward index for position comparision
 
-				if ((string(argv[7]) == "0" && positions[rDiv] < positions[site + G] + L) || (string(argv[7]) == "1" && rDiv < site + G + L)) {
+				if ((string(argv[7]) == "0" && positions[rDiv] < positions[site + (G - 1)] + L) || (string(argv[7]) == "1" && rDiv < site + (G - 1) + L)) {
 					for (int j = start; j < i && j != -1; ++j) rBlock[backwardPre[j]] = id;
 					rBlockSize[id] = i - start;
 					++id;

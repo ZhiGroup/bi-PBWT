@@ -11,6 +11,6 @@ rPBWT: rPBWT.cpp
 	g++ -std=c++17 -Wshadow -Wall -o rPBWT rPBWT.cpp -O2 -Wno-unused-result
 
 clean:
-	rm -f PBWT rPBWT dPBWT drPBWT
+	rm -f PBWT rPBWT
 
 .PHONY: all clean MemoryMap

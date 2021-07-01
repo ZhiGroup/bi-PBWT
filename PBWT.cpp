@@ -182,8 +182,8 @@ int main(int argc, char* argv[]) {
 	for (int i = 0; i < 9; ++i) getline(ss, ID[0], '\t'); // skip fixed columns, assumes 9 columns (FORMAT column) 
 	for (int i = 0; i < M / 2; ++i) {
 		getline(ss, ID[2 * i], '\t');
-		ID[2 * i + 1] = ID[2 * i] + "-2";
-		ID[2 * i] += "-1";
+		ID[2 * i + 1] = ID[2 * i] + "-1";
+		ID[2 * i] += "-0";
 	}
 
 	vector<int> pre(M), div(M), backwardPre(M), backwardDiv(M); // prefix and divergence arrays for forward and backward PBWT

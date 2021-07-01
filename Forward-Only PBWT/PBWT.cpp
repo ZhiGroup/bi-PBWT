@@ -84,7 +84,7 @@ int main(int argc, char* argv[]) {
 			for (int i = 1; i < M; ++i) {
 				if (map[div[i]] > map[site - 1] - L) {
 					if (i - start >= W) {
-						out << positions[maxi] << ' ' << positions[site - 1] << ' ' << map[maxi] << ' ' << map[site - 1];
+						out << positions[maxi] << ' ' << positions[site - 1] << ' ' << map[maxi] << ' ' << map[site - 1] << ' ' << (i - start);
 						for (int j = start; j < i; ++j) {
 							out << ' ' << ID[pre[j]];
 						}
@@ -94,6 +94,13 @@ int main(int argc, char* argv[]) {
 					maxi = 0;
 				}
 				else maxi = max(maxi, div[i]);
+			}
+			if (M - start >= W) {
+				out << positions[maxi] << ' ' << positions[site - 1] << ' ' << map[maxi] << ' ' << map[site - 1] << ' ' << (M - start);
+				for (int j = start; j < M; ++j) {
+					out << ' ' << ID[pre[j]];
+				}
+				out << '\n';
 			}
 		}
 

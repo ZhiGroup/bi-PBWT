@@ -43,13 +43,13 @@ An example:
 ## Results
 When finished executing, biPBWT will generate 3 files with the extensions ".blocks", ".IDs", and ".MI".
 
-The file ".blocks" represents each block on its own line with seven space-separated fields "site k" "genomic location of site k" "forward length (in sites)" "reverse length (in sites)" "starting genomic location of block" "ending genomic location of block" "width of block".
+The file ".blocks" represents each block on its own line with seven space-separated fields: <site k> <genomic location of site k> <forward length (in sites)> <reverse length (in sites)> <starting genomic location of block> <ending genomic location of block> <width of block>.
 
-The file ".IDs" will have the same number of lines as the ".blocks" file with each line representing the ID's of all the haplotypes in the block on the same line in the ".blocks" file. IDs are suffixed with either "-0" or "-1" indicating the first and second haplotype of the individual ID, respectively.
+The file ".IDs" will have the same number of lines as the ".blocks" file with each line representing the space-separated ID's of all the haplotypes in the block on the same line in the ".blocks" file. IDs are suffixed with either "-0" or "-1" indicating the first and second haplotype of the individual ID, respectively.
 
-The file ".MI" has two space-separated values on each line representing "genomic location" "mutual information value".
+The file ".MI" has two space-separated values on each line representing <genomic location> <mutual information value>.
 
-Note that biPBWT generates 3 intermediate files with the extensions ".rpbwt", ".sites", and ".meta" during execution that are deleted upon completion. The ".rpbwt" file stores the reverse positional prefix array and reverse divergence array in binary format (each value takes 4 bytes) and takes up around twice the disk space of the VCF file. The ".sites" file stores the genomic position of each site on its own line. The ".meta" files stores two space-separated values M and N representing the number of haplotypes and the number of sites in the VCF file.
+Note that biPBWT generates 3 intermediate files with the extensions ".rpbwt", ".sites", and ".meta" during execution that are deleted upon completion. The ".rpbwt" file stores the reverse positional prefix array and reverse divergence array in binary format (each value takes 4 bytes) and takes up around four times the disk space of the VCF file. The ".sites" file stores the genomic position of each site on its own line. The ".meta" files stores two space-separated values M and N representing the number of haplotypes and the number of sites in the VCF file.
 
 ## Citation
 If you found our work useful in your research, please consider citing the following paper:

@@ -54,3 +54,4 @@ Note that biPBWT generates 3 intermediate files with the extensions ".rpbwt", ".
 ## Citation
 If you found our work useful in your research, please consider citing the following paper:
 
+Naseri A, Yue W, Zhang S, Zhi D. Efficient Haplotype Block Matching in Bi-Directional PBWT. In Workshop on Algorithms in Bioinformatics (WABI) 2021. [accepted]

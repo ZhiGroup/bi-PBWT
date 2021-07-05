@@ -122,8 +122,7 @@ struct VCFReader {
 	}
 
 	int getGap(int g, int idx) {
-		int jump = G - g;
-		return gap[(p1 + G - jump) % G][idx];
+		return gap[(p1 + g) % G][idx];
 	}
 
 	void close() {vcf.close();}

@@ -73,7 +73,7 @@ struct VCFReader {
 
 	VCFReader(string file, int _G, int _M) {
 		vcf = ifstream(file);
-		G = max(_G, 1), M = _M;
+		G = max(_G, 1), M = _M; // gap size of 0 is equivalent to a gap size of 1 when handling the VCF file and gap
 		gap = vector<vector<int>>(G, vector<int>(M));
 		ID = vector<string>(M);
 		preprocess();

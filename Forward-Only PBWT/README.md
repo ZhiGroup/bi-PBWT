@@ -41,4 +41,4 @@ The format of the genetic mapping file must be 2 space-separated fields per line
 ## Results
 When finished executing, PBWT will generate 1 file with the extensions ".blocks".
 
-The file ".blocks" represents each block on its own line with five space-separated fields "starting genomic location of block" "ending genomic location of block" "starting genetic location of block" "ending genetic location of block" "width of block" followed by space seperated ID's of all the haplotypes in the block. IDs are suffixed with either "-0" or "-1" indicating the first and second haplotype of the individual ID, respectively.
+The file ".blocks" represents each block on its own line with five space-separated fields `<starting genomic location of block> <ending genomic location of block> <starting genetic location of block> <ending genetic location of block> <width of block>` followed by space seperated ID's of all the haplotypes in the block. IDs are suffixed with either "-0" or "-1" indicating the first and second haplotype of the individual ID, respectively.

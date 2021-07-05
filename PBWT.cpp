@@ -221,14 +221,13 @@ int main(int argc, char* argv[]) {
 				rDiv = (N - 1) - rDiv; // get forward index for position comparision
 
 				if ((string(argv[7]) == "0" && positions[rDiv] < positions[site + (G - 1)] + L) || (string(argv[7]) == "1" && rDiv < site + (G - 1) + L)) {
-					for (int j = start; j < i && j != -1; ++j) rBlock[backwardPre[j]] = id;
 					rBlockSize[id] = i - start;
 					++id;
 					start = i;
 				}
+				rBlock[backwardPre[i]] = id;
 			}
 			// special case where a matching block extends up to the final haplotype
-			for (int j = start; j < M; ++j)	rBlock[backwardPre[j]] = id;
 			rBlockSize[id] = M - start;
 
 			// initialize idx, block, and blockSize
@@ -236,14 +235,13 @@ int main(int argc, char* argv[]) {
 			for (int i = 0; i < M; ++i) {
 				idx[pre[i]] = i;
 				if ((string(argv[7]) == "0" && positions[div[i]] > positions[site] - L) || (string(argv[7]) == "1" && div[i] > site - L)) {
-					for (int j = start; j < i && j != -1; ++j) block[pre[j]] = id;
 					blockSize[id] = i - start;
 					++id;
 					start = i;
 				}
+				block[pre[i]] = id;
 			}
 			// special case where a matching block extends up to the final haplotype
-			for (int j = start; j < M; ++j) block[pre[j]] = id;
 			blockSize[id] = M - start;
 
 			SparseTable forwardSparse(div), backwardSparse(backwardDiv); // build sparse tables

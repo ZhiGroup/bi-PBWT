@@ -1,8 +1,3 @@
-#if defined MEMORY_MAP
-#include <boost/iostreams/device/mapped_file.hpp>
-#include <boost/iostreams/stream.hpp>
-using namespace boost::iostreams;
-#endif
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -15,8 +10,7 @@ using namespace std;
 int M = 0; // # of sequences
 
 // skip meta-info lines and header line
-template<class T>
-void skipMeta(T& in) {
+void skipMeta(ifstream& in) {
 	string s;
 	while (getline(in, s)) {
 		if ((int)s.size() < 2 || s[0] != '#' || s[1] != '#') break;
@@ -24,8 +18,7 @@ void skipMeta(T& in) {
 }
 
 // find M using vcf's info field - resets input stream pointer when finished
-template<class T>
-void getM(T& in) {
+void getM(ifstream& in) {
 	int startPos = in.tellg(); 
 	string s; getline(in, s);
 	int tabs = 0;
@@ -40,12 +33,7 @@ void getM(T& in) {
 int main(int argc, char* argv[]) {
 	ios_base::sync_with_stdio(0); cin.tie(0);
 
-	#if defined MEMORY_MAP
-	mapped_file_source file(argv[1]);
-	stream<mapped_file_source> in(file);
-	#else
 	ifstream in(argv[1]);
-	#endif
 	ofstream out(string(argv[2]) + ".rpbwt", ios::binary), sites(string(argv[2]) + ".sites"), meta(string(argv[2]) + ".meta");
 
 	int checkpoint = atoi(argv[3]);

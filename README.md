@@ -8,7 +8,6 @@ Bidirectional PBWT is an efficient method to find blocks of matches around each 
 - GNU Make  
 - GNU getopt
 - Bash  
-- [Optional] Boost C++ Libraries (required for memory mapped files)
 
 ## Installation
 To install the program clone the repository to a local folder using:
@@ -19,8 +18,6 @@ Enter the repository folder and compile the program:
 
 `cd bi-PBWT`  
 `make`
-
-[Optional] Compile with `make MemoryMap` if using memory mapped files.
 
 ## Usage Instructions
 Type  

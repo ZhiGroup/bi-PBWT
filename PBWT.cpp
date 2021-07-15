@@ -1,8 +1,3 @@
-#if defined MEMORY_MAP
-#include <boost/iostreams/device/mapped_file.hpp>
-#include <boost/iostreams/stream.hpp>
-using namespace boost::iostreams;
-#endif
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -70,24 +65,69 @@ struct SparseTable {
 	}
 };
 
-struct State {
-	int f_mini, f_maxi, r_mini, r_maxi;
-	vector<int> IDs, zero, one;
+struct VCFReader {
+	ifstream vcf;
+	int G, M, p1 = 0;
+	vector<vector<int>> gap; // stores haplotype data in the gap
+	vector<string> ID;
 
-	State() {
-		f_mini = r_mini = numeric_limits<int>::max();
-		f_maxi = r_maxi = -1;
-		zero = vector<int>(G);
-		one = vector<int>(G);
+	VCFReader(string file, int _G, int _M) {
+		vcf = ifstream(file);
+		G = max(_G, 1), M = _M; // gap size of 0 is equivalent to a gap size of 1 when handling the VCF file and gap
+		gap = vector<vector<int>>(G, vector<int>(M));
+		ID = vector<string>(M);
+		preprocess();
+		initGap();
 	}
+	
+	// gets haplotype IDs and moves input stream pointer to start of raw data
+	void preprocess() { 
+		// skip meta-info lines and get header line
+		string header;
+		while (getline(vcf, header)) {
+			if ((int)header.size() < 2 || header[0] != '#' || header[1] != '#') break;
+		}
+
+		// input sample IDs
+		stringstream ss(header);
+		for (int i = 0; i < 9; ++i) getline(ss, ID[0], '\t'); // skip fixed columns, assumes 9 columns (FORMAT column) 
+		for (int i = 0; i < M / 2; ++i) {
+			getline(ss, ID[2 * i], '\t');
+			ID[2 * i + 1] = ID[2 * i] + "-1";
+			ID[2 * i] += "-0";
+		}
+	}
+
+	// initializes sliding window for the gap
+	void initGap() {
+		for (int i = 0; i < G; ++i) nextSite();
+	}
+
+	// reads the next site in the VCF file
+	void nextSite() {
+		char s[2 * M + 5000]; // assumes fixed fields take up less than 5000 characters
+		vcf.getline(s, 2 * M + 5000);
+		// skip fixed fields
+		int offset = 0, tabs = 0; // offset = position in "s" of first sequence - points to the first character after 9 tabs
+		while (tabs < 9) {
+			if (s[offset] == '\t') ++tabs;
+			++offset;
+		}
+
+		for (int i = 0; i < M; ++i) {
+			assert(s[offset + (i / 2) * 4 + 1] == '|'); // sanity check
+			gap[p1][i] = (s[offset + 2 * i] == '0' ? 0 : 1);
+		}
+		p1 = (p1 + 1) % G;
+	}
+
+	int getGap(int g, int idx) {
+		return gap[(p1 + g) % G][idx];
+	}
+
+	void close() {vcf.close();}
 };
 
-int p1 = 0;
-vector<vector<int>> gap; // stores haplotype data in the gap
-int getGap(int g, int idx) {
-	int jump = G - g;
-	return gap[(p1 + G - jump) % G][idx];
-}
 
 void countingSort(vector<vector<int>>& v, int idx) {
 	vector<vector<vector<int>>> table(M + 1);
@@ -102,7 +142,7 @@ void countingSort(vector<vector<int>>& v, int idx) {
 	}
 }
 
-void processBlock(vector<vector<int>>& link, int start, int end, vector<int>& idx, vector<int>& rIdx, SparseTable& forwardSparse, SparseTable& backwardSparse, int site, int rsite, vector<int>& positions, vector<string>& ID, ofstream& blocks, ofstream& blockIDs, double& MI, vector<int>& blockSize, vector<int>& rBlockSize) { // [start, end)
+void processBlock(vector<vector<int>>& link, int start, int end, vector<int>& idx, vector<int>& rIdx, SparseTable& forwardSparse, SparseTable& backwardSparse, int site, int rsite, vector<int>& positions, vector<string>& ID, ofstream& blocks, ofstream& blockIDs, double& MI, vector<int>& blockSize, vector<int>& rBlockSize, VCFReader& vcf) { // [start, end)
 	// compute MI
 	double pxy = (double)(end - start) / M;
 	double px = (double)blockSize[link[start][1]] / M;
@@ -120,7 +160,7 @@ void processBlock(vector<vector<int>>& link, int start, int end, vector<int>& id
 		r_mini = min(r_mini, rIdx[id]);
 		r_maxi = max(r_maxi, rIdx[id]);
 		for (int k = 0; k < G; ++k) {
-			if (getGap(k, id) == 0) ++zero[k];
+			if (vcf.getGap(k, id) == 0) ++zero[k];
 			else ++one[k];
 		}
 	}
@@ -144,74 +184,28 @@ int main(int argc, char* argv[]) {
 	ios_base::sync_with_stdio(0); cin.tie(0);
 
 	string writeTo = string(argv[2]);
-	#if defined MEMORY_MAP
-	mapped_file_source file(writeTo + ".rpbwt");
-	stream<mapped_file_source> backward(file, ios::binary);
-	#else
-	ifstream backward(writeTo + ".rpbwt");
-	#endif
-	ifstream in(argv[1]), sites(writeTo + ".sites"), meta(writeTo + ".meta");
+	ifstream backward(writeTo + ".rpbwt"), sites(writeTo + ".sites"), meta(writeTo + ".meta");
 	ofstream blocks(writeTo + ".blocks"), blockIDs(writeTo + ".IDs"), resultMI(writeTo + ".MI");
 
 	int checkpoint = atoi(argv[3]);
 	L = atoi(argv[4]), W = atoi(argv[5]), G = atoi(argv[6]);
 
-	// special case for zero sized gap - treated like G = 1 for PBWT and VCF processing, and treated like G = 0 for the 3 algorithms
-	bool zeroGap = false;
-	if (G == 0) {
-		zeroGap = true;
-		G = 1;
-	}
-
 	// retrieve M and N from meta file
 	meta >> M >> N;
+
+	VCFReader vcf(string(argv[1]), G, M);
 
 	// input chromosome site positions
 	vector<int> positions(N);
 	for (int i = 0; i < N; ++i) sites >> positions[i];
 
-	// skip meta-info lines and get header line
-	string header;
-	while (getline(in, header)) {
-		if ((int)header.size() < 2 || header[0] != '#' || header[1] != '#') break;
-	}
-
-	// input sample IDs
-	vector<string> ID(M);
-	stringstream ss(header);
-	for (int i = 0; i < 9; ++i) getline(ss, ID[0], '\t'); // skip fixed columns, assumes 9 columns (FORMAT column) 
-	for (int i = 0; i < M / 2; ++i) {
-		getline(ss, ID[2 * i], '\t');
-		ID[2 * i + 1] = ID[2 * i] + "-1";
-		ID[2 * i] += "-0";
-	}
-
 	vector<int> pre(M), div(M), backwardPre(M), backwardDiv(M); // prefix and divergence arrays for forward and backward PBWT
 	iota(pre.begin(), pre.end(), 0);
 	vector<int> a(M), b(M), d(M), e(M);
-	char s[2 * M + 5000]; // assumes fixed fields take up less than 5000 characters
 	vector<int> idx(M), rIdx(M); // idx[i] = index of sample i in the positional prefix array; r = reverse
 	vector<int> block(M), blockSize(M + 1), rBlock(M), rBlockSize(M + 1); // block[i] = block ID of sample i in the reverse PBWT; block IDs go from [1, M]
-	gap = vector<vector<int>>(G, vector<int>(M));
-
-	// initialize the gap
-	for (int site = 0; site < G; ++site) {
-		in.getline(s, 2 * M + 5000);
-		// skip fixed fields
-		int offset = 0, tabs = 0; // offset = position in "s" of first sequence - points to the first character after 9 tabs
-		while (tabs < 9) {
-			if (s[offset] == '\t') ++tabs;
-			++offset;
-		}
-		for (int i = 0; i < M; ++i) {
-			assert(s[offset + (i / 2) * 4 + 1] == '|'); // sanity check
-			gap[p1][i] = (s[offset + 2 * i] == '0' ? 0 : 1);
-		}
-		p1 = (p1 + 1) % G;
-	}
 
 	for (int site = 0; site + G < N; ++site) {
-		if (zeroGap) G = 0;
 		if (site != 0) {
 			int rsite = (N - 1) - site - G; // index of the corresponding reverse site
 			backward.seekg((long long)rsite * M * 8);
@@ -226,14 +220,13 @@ int main(int argc, char* argv[]) {
 				rDiv = (N - 1) - rDiv; // get forward index for position comparision
 
 				if ((string(argv[7]) == "0" && positions[rDiv] < positions[site + (G - 1)] + L) || (string(argv[7]) == "1" && rDiv < site + (G - 1) + L)) {
-					for (int j = start; j < i && j != -1; ++j) rBlock[backwardPre[j]] = id;
 					rBlockSize[id] = i - start;
 					++id;
 					start = i;
 				}
+				rBlock[backwardPre[i]] = id;
 			}
 			// special case where a matching block extends up to the final haplotype
-			for (int j = start; j < M; ++j)	rBlock[backwardPre[j]] = id;
 			rBlockSize[id] = M - start;
 
 			// initialize idx, block, and blockSize
@@ -241,14 +234,13 @@ int main(int argc, char* argv[]) {
 			for (int i = 0; i < M; ++i) {
 				idx[pre[i]] = i;
 				if ((string(argv[7]) == "0" && positions[div[i]] > positions[site] - L) || (string(argv[7]) == "1" && div[i] > site - L)) {
-					for (int j = start; j < i && j != -1; ++j) block[pre[j]] = id;
 					blockSize[id] = i - start;
 					++id;
 					start = i;
 				}
+				block[pre[i]] = id;
 			}
 			// special case where a matching block extends up to the final haplotype
-			for (int j = start; j < M; ++j) block[pre[j]] = id;
 			blockSize[id] = M - start;
 
 			SparseTable forwardSparse(div), backwardSparse(backwardDiv); // build sparse tables
@@ -266,15 +258,14 @@ int main(int argc, char* argv[]) {
 			start = 0;
 			for (int i = 1; i < M; ++i) {
 				if (link[i][1] != link[i - 1][1] || link[i][2] != link[i - 1][2]) {
-					processBlock(link, start, i, idx, rIdx, forwardSparse, backwardSparse, site, rsite, positions, ID, blocks, blockIDs, MI, blockSize, rBlockSize);
+					processBlock(link, start, i, idx, rIdx, forwardSparse, backwardSparse, site, rsite, positions, vcf.ID, blocks, blockIDs, MI, blockSize, rBlockSize, vcf);
 					start = i;	
 				}
 			}
-			processBlock(link, start, M, idx, rIdx, forwardSparse, backwardSparse, site, rsite, positions, ID, blocks, blockIDs, MI, blockSize, rBlockSize);
+			processBlock(link, start, M, idx, rIdx, forwardSparse, backwardSparse, site, rsite, positions, vcf.ID, blocks, blockIDs, MI, blockSize, rBlockSize, vcf);
 
 			resultMI << positions[site] << ' ' << MI << '\n'; 
 		}
-		if (zeroGap) G = 1;
 
 		// pbwt algorithm
 		int u = 0, v = 0, p = site + 1, q = site + 1;
@@ -282,7 +273,7 @@ int main(int argc, char* argv[]) {
 			int id = pre[i];
 			if (div[i] > p) p = div[i];
 			if (div[i] > q) q = div[i];
-			if (getGap(0, id) == 0) {
+			if (vcf.getGap(0, id) == 0) {
 				a[u] = id;
 				d[u] = p;
 				++u;
@@ -304,24 +295,12 @@ int main(int argc, char* argv[]) {
 			div[u + i] = e[i];
 		}
 
-		in.getline(s, 2 * M + 5000);
-		// skip fixed fields
-		int offset = 0, tabs = 0; // offset = position in "s" of first sequence - points to the first character after 9 tabs
-		while (tabs < 9) {
-			if (s[offset] == '\t') ++tabs;
-			++offset;
-		}
-
-		for (int i = 0; i < M; ++i) {
-			assert(s[offset + (i / 2) * 4 + 1] == '|'); // sanity check
-			gap[p1][i] = (s[offset + 2 * i] == '0' ? 0 : 1);
-		}
-		p1 = (p1 + 1) % G;
+		vcf.nextSite(); // move input stream pointer
 
 		if (site % checkpoint == 0) cout << "Checkpoint " << site << endl;
 	}
 
-	in.close();
+	vcf.close();
 	sites.close();
 	meta.close();
 	blocks.close();

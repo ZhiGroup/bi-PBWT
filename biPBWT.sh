@@ -70,7 +70,7 @@ if [ "$readVcf" == "" ]; then
 fi
 
 basename=$(basename $readVcf)
-filename=$(echo $basename | cut -f1 -d ".")
+filename="${basename%.*}"
 if [ "$writeTo" = "" ]; then
 	writeTo="$filename"
 fi

@@ -38,11 +38,9 @@ An example:
 `./biPBWT.sh --readVcf "example.vcf" --writeTo "output" --length 500000 --width 100 --gap 0 --checkpoint 100000`  
 
 ## Results
-When finished executing, biPBWT will generate 3 files with the extensions ".blocks", ".IDs", and ".MI".
+When finished executing, biPBWT will generate 2 files with the extensions ".blocks" and ".MI".
 
-The file ".blocks" represents each block on its own line with seven space-separated fields: `<site k> <genomic location of site k> <forward length (in sites)> <reverse length (in sites)> <starting genomic location of block> <ending genomic location of block> <width of block>`.
-
-The file ".IDs" will have the same number of lines as the ".blocks" file with each line representing the space-separated ID's of all the haplotypes in the block on the same line in the ".blocks" file. IDs are suffixed with either "-0" or "-1" indicating the first and second haplotype of the individual ID, respectively.
+The file ".blocks" represents each block on its own line with seven space-separated fields followed by space-separated ID's of all the haplotypes in the block: `<site k> <genomic location of site k> <forward length (in sites)> <reverse length (in sites)> <starting genomic location of block> <ending genomic location of block> <width of block> <ID #1> <ID #2> <ID #3> ...`. IDs are suffixed with either "-0" or "-1" indicating the first and second haplotype of the individual ID, respectively.
 
 The file ".MI" has two space-separated values on each line representing `<genomic location> <mutual information value>`.
 

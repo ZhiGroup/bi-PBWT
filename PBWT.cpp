@@ -20,7 +20,7 @@ struct SparseTable {
 	vector<int> v, mask;
 	vector<vector<int>> table;
 
-	SparseTable(vector<int> _v) {
+	SparseTable(vector<int>& _v) {
 		this->v = _v;
 		this->N = (int)v.size();
 		blocks = N / B;

@@ -82,7 +82,7 @@ int main(int argc, char* argv[]) {
 		if (site != 0) {
 			int start = 0, maxi = 0; 
 			for (int i = 1; i < M; ++i) {
-				if (map[div[i]] > map[site - 1] - L) {
+				if (map[div[i]] > map[site] - L) {
 					if (i - start >= W) {
 						out << positions[maxi] << ' ' << positions[site - 1] << ' ' << map[maxi] << ' ' << map[site - 1] << ' ' << (i - start);
 						for (int j = start; j < i; ++j) {

@@ -80,10 +80,10 @@ int main(int argc, char* argv[]) {
 		map.push_back(genetic_pos);
 
 		if (site != 0) {
-			int start = 0, maxi = 0; 
-			for (int i = 1; i < M; ++i) {
+			int start = -1, maxi = 0, zero = 0, one = 0; 
+			for (int i = 0; i < M; ++i) {
 				if (map[div[i]] > map[site] - L) {
-					if (i - start >= W) {
+					if (i - start >= W && min(zero, one) != 0) {
 						out << positions[maxi] << ' ' << positions[site - 1] << ' ' << map[maxi] << ' ' << map[site - 1] << ' ' << (i - start);
 						for (int j = start; j < i; ++j) {
 							out << ' ' << ID[pre[j]];
@@ -91,11 +91,13 @@ int main(int argc, char* argv[]) {
 						out << '\n';
 					}
 					start = i;
-					maxi = 0;
+					maxi = zero = one = 0;
 				}
 				else maxi = max(maxi, div[i]);
+				if (s[offset + 2 * pre[i]] == '0') ++zero;
+				else ++one;
 			}
-			if (M - start >= W) {
+			if (M - start >= W && min(zero, one) != 0) {
 				out << positions[maxi] << ' ' << positions[site - 1] << ' ' << map[maxi] << ' ' << map[site - 1] << ' ' << (M - start);
 				for (int j = start; j < M; ++j) {
 					out << ' ' << ID[pre[j]];
@@ -111,7 +113,7 @@ int main(int argc, char* argv[]) {
 			if (div[i] > p) p = div[i];
 			if (div[i] > q) q = div[i];
 			assert(s[offset + (id / 2) * 4 + 1] == '|'); // sanity check
-			if (s[offset + (id / 2) * 4 + (id % 2) * 2] == '0') {
+			if (s[offset + 2 * id] == '0') {
 				a[u] = id;
 				d[u] = p;
 				++u;

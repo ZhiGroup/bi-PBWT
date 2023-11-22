@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ $# -eq 0 ]; then
-	echo "Program: PBWT (Positional Burrows-Wheeler Transform) (version 1.0)"
+	echo "Program: PBWT (Positional Burrows-Wheeler Transform) [version 1.0]"
 	echo ""
 	echo "Contact: Shaojie Zhang [shzhang@cs.ucf.edu] or Degui Zhi [degui.zhi@uth.tmc.edu]"
 	echo ""
